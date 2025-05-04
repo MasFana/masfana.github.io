@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IoT Dashboard</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- MQTT.js CDN -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <style>
+        .gauge-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            opacity: 50%;
+        }
+
+        .gauge-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        .inset-depth {
+            box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.1), inset 0 -4px 8px rgba(0, 0, 0, 0.05);
+            background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <main class="container mx-auto min-h-screen p-4">
+        <!-- Gauges -->
+        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="relative flex items-center space-x-4 rounded-lg bg-gray-200 p-6">
+                <div class="gauge-container inset-depth z-0 rounded-lg">
+                    <div class="gauge-fill" id="tempGauge"></div>
+                </div>
+                <i class="fas fa-thermometer-half text-4xl text-red-400 z-50"></i>
+                <div class="w-full z-50">
+                    <h2 class="text-md font-semibold md:text-xl">Temperature</h2>
+                    <p class="text-2xl" id="temperature">-- °C</p>
+                </div>
+            </div>
+            <div class="relative flex items-center space-x-4 rounded-lg bg-gray-200 p-6">
+                <div class="gauge-container inset-depth rounded-lg z-0">
+                    <div class="gauge-fill" id="humidityGauge"></div>
+                </div>
+                <i class="fas fa-tint text-4xl text-blue-400 z-50"></i>
+                <div class="w-full z-50">
+                    <h2 class="text-md font-semibold md:text-xl">Humidity</h2>
+                    <p class="text-2xl" id="humidity">-- %</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="mb-8 rounded-lg border border-gray-100 bg-white p-2 shadow-lg md:p-6">
+            <h2 class="text-md m-4 font-semibold lg:text-xl">History</h2>
+            <canvas id="historicalChart"></canvas>
+        </div>
+    </main>
+
+    <script>
+        const tempGauge = document.getElementById('tempGauge');
+        const humidityGauge = document.getElementById('humidityGauge');
+        const tempText = document.getElementById('temperature');
+        const humidityText = document.getElementById('humidity');
+
+        function updateTempGauge(temp) {
+            const percent = Math.min(100, Math.max(0, (temp / 40) * 100));
+            tempGauge.style.width = percent + '%';
+            tempGauge.style.backgroundColor = temp < 10 ? '#93c5fd' : temp < 18 ? '#60a5fa' : temp < 26 ? '#4ade80' : temp < 32 ? '#fbbf24' : '#f87171';
+        }
+
+        function updateHumidityGauge(humidity) {
+            const percent = Math.min(100, Math.max(0, humidity));
+            humidityGauge.style.width = percent + '%';
+            humidityGauge.style.backgroundColor = humidity < 30 ? '#bfdbfe' : humidity < 50 ? '#86efac' : humidity < 70 ? '#5eead4' : '#22d3ee';
+        }
+
+        const ctx = document.getElementById('historicalChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Temperature (°C)',
+                        data: [],
+                        borderColor: '#FF6B6B',
+                        backgroundColor: 'rgba(255,107,107,0.2)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: [],
+                        borderColor: '#4ECDC4',
+                        backgroundColor: 'rgba(78,205,196,0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: { title: { display: true, text: 'Time' } },
+                    y: { title: { display: true, text: 'Value' }, beginAtZero: true }
+                }
+            }
+        });
+
+        function updateDisplay(temp, humidity) {
+            const now = new Date().toLocaleTimeString();
+            tempText.textContent = `${temp} °C`;
+            humidityText.textContent = `${humidity} %`;
+            updateTempGauge(temp);
+            updateHumidityGauge(humidity);
+
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(temp);
+            chart.data.datasets[1].data.push(humidity);
+
+            if (chart.data.labels.length > 20) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.shift();
+            }
+
+            chart.update();
+        }
+
+        // MQTT Connection
+        const client = mqtt.connect('wss://7d677df85f0a4b2ca584c9e9c7f3a1de.s1.eu.hivemq.cloud:8884/mqtt', {
+                username: 'fanapb',
+                password: 'Admin12345'
+            });
+        const topic = 'sk'; // Replace with your actual topic
+
+        client.on('connect', () => {
+            console.log('MQTT connected');
+            client.subscribe(topic, err => {
+                if (err) console.error('Subscribe error:', err);
+            });
+        });
+
+        client.on('message', (topic, message) => {
+            try {
+                const data = JSON.parse(message.toString());
+                const temp = parseFloat(data.temperature);
+                const humidity = parseFloat(data.humidity);
+                updateDisplay(temp, humidity);
+            } catch (err) {
+                console.error('Invalid MQTT message:', err);
+            }
+        });
+
+        client.on('error', err => console.error('MQTT Error:', err));
+    </script>
+</body>
+
+</html>
