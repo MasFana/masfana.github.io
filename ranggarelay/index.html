@@ -218,14 +218,14 @@
         // MQTT Configuration
         const mqttConfig = {
             server: 'broker.hivemq.com',
-            port: 8000, // Using WebSocket port
+            port: 8884, // Using WebSocket port
             publishTopic: 's955b5cfb-71b1-444c-bf58-4c72e4264e73', // Topic to send commands
             subscribeTopic: 'p955b5cfb-71b1-444c-bf58-4c72e4264e73' // Topic to receive sensor data
         };
         
         // MQTT Client Setup
         const clientId = 'web-client-' + Math.random().toString(16).substr(2, 8);
-        const client = mqtt.connect(`ws://${mqttConfig.server}:${mqttConfig.port}/mqtt`, {
+        const client = mqtt.connect(`wss://${mqttConfig.server}:${mqttConfig.port}/mqtt`, {
             clientId: clientId,
             clean: true,
             connectTimeout: 4000,
