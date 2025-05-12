@@ -1,87 +1,334 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Relay Control Dashboard</title>
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- MQTT.js CDN -->
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Relay Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .relay-control {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sensor-data {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .relay {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        
+        .relay-info {
+            font-weight: bold;
+        }
+        
+        .relay-number {
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .sensor-value {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+        
+        .sensor-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        @media (max-width: 600px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-
-<body class="bg-gray-100 font-sans">
-  <main class="container mx-auto min-h-screen p-4">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="rounded-lg bg-white p-6 shadow-lg text-center">
-        <h2 class="text-xl font-semibold mb-4">Relay 1 (FAN)</h2>
-        <button id="relay1Btn" class="relay-btn bg-green-500">Turn ON</button>
-      </div>
-      <div class="rounded-lg bg-white p-6 shadow-lg text-center">
-        <h2 class="text-xl font-semibold mb-4">Relay 2 (PUMP)</h2>
-        <button id="relay2Btn" class="relay-btn bg-green-500">Turn ON</button>
-      </div>
-      <div class="rounded-lg bg-white p-6 shadow-lg text-center">
-        <h2 class="text-xl font-semibold mb-4">Relay 3 (LIGHT)</h2>
-        <button id="relay3Btn" class="relay-btn bg-green-500">Turn ON</button>
-      </div>
-      <div class="rounded-lg bg-white p-6 shadow-lg text-center">
-        <h2 class="text-xl font-semibold mb-4">Relay 4 (ALARM)</h2>
-        <button id="relay4Btn" class="relay-btn bg-green-500">Turn ON</button>
-      </div>
+<body>
+    <h1>ESP32 Relay Control</h1>
+    
+    <div class="dashboard">
+        <div class="relay-control">
+            <h2>Relay Control</h2>
+            
+            <div class="relay">
+                <div class="relay-info">
+                    <span class="relay-number">Relay 1</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="relay1">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="relay">
+                <div class="relay-info">
+                    <span class="relay-number">Relay 2</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="relay2">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="relay">
+                <div class="relay-info">
+                    <span class="relay-number">Relay 3</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="relay3">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="relay">
+                <div class="relay-info">
+                    <span class="relay-number">Relay 4</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="relay4">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="sensor-data">
+            <h2>Sensor Data</h2>
+            
+            <div>
+                <div class="sensor-label">
+                    <span>Temperature:</span>
+                </div>
+                <div class="sensor-value" id="temperature">-- °C</div>
+            </div>
+            
+            <div>
+                <div class="sensor-label">
+                    <span>Humidity:</span>
+                </div>
+                <div class="sensor-value" id="humidity">-- %</div>
+            </div>
+        </div>
     </div>
-  </main>
-
-  <script>
-    // MQTT Connection
-    const client = mqtt.connect('wss://7d677df85f0a4b2ca584c9e9c7f3a1de.s1.eu.hivemq.cloud:8884/mqtt', {
-      clientId: 'relay-dashboard',
-      clean: true,
-      username: 'fanapb',
-      password: 'Admin12345'
-    });
-
-    const pubTopic = 'relay/control'; // Pastikan ESP32 subscribe topik ini
-
-    client.on('connect', () => {
-      console.log('MQTT connected');
-    });
-
-    client.on('error', err => {
-      console.error('MQTT Error:', err);
-    });
-
-    // State for each relay
-    const relayStates = [false, false, false, false];
-
-    function toggleRelay(index) {
-      relayStates[index] = !relayStates[index];
-      const relayNumber = index + 1;
-      const state = relayStates[index] ? "ON" : "OFF";
-      const message = JSON.stringify({ relay: relayNumber, state });
-
-      client.publish(pubTopic, message);
-
-      const btn = document.getElementById(`relay${relayNumber}Btn`);
-      btn.textContent = relayStates[index] ? "Turn OFF" : "Turn ON";
-      btn.classList.toggle('bg-green-500', !relayStates[index]);
-      btn.classList.toggle('bg-red-500', relayStates[index]);
-    }
-
-    // Attach event listeners
-    for (let i = 1; i <= 4; i++) {
-      document.getElementById(`relay${i}Btn`).addEventListener('click', () => toggleRelay(i - 1));
-    }
-  </script>
-
-  <style>
-    .relay-btn {
-      @apply px-6 py-3 text-white font-bold rounded-xl transition-colors hover:brightness-110;
-    }
-  </style>
+    
+    <div class="status" id="connection-status">
+        Connecting to MQTT broker...
+    </div>
+    
+    <script>
+        // MQTT Configuration
+        const mqttConfig = {
+            server: 'broker.hivemq.com',
+            port: 8000, // Using WebSocket port
+            publishTopic: 's955b5cfb-71b1-444c-bf58-4c72e4264e73', // Topic to send commands
+            subscribeTopic: 'p955b5cfb-71b1-444c-bf58-4c72e4264e73' // Topic to receive sensor data
+        };
+        
+        // MQTT Client Setup
+        const clientId = 'web-client-' + Math.random().toString(16).substr(2, 8);
+        const client = mqtt.connect(`ws://${mqttConfig.server}:${mqttConfig.port}/mqtt`, {
+            clientId: clientId,
+            clean: true,
+            connectTimeout: 4000,
+            reconnectPeriod: 1000
+        });
+        
+        // DOM Elements
+        const connectionStatus = document.getElementById('connection-status');
+        const temperatureElement = document.getElementById('temperature');
+        const humidityElement = document.getElementById('humidity');
+        const relayCheckboxes = [
+            document.getElementById('relay1'),
+            document.getElementById('relay2'),
+            document.getElementById('relay3'),
+            document.getElementById('relay4')
+        ];
+        
+        // MQTT Event Handlers
+        client.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            connectionStatus.textContent = 'Connected to MQTT broker';
+            connectionStatus.className = 'status connected';
+            
+            // Subscribe to sensor data topic
+            client.subscribe(mqttConfig.subscribeTopic, (err) => {
+                if (err) {
+                    console.error('Subscription error:', err);
+                    connectionStatus.textContent = 'Subscription error';
+                    connectionStatus.className = 'status disconnected';
+                } else {
+                    console.log('Subscribed to topic:', mqttConfig.subscribeTopic);
+                }
+            });
+        });
+        
+        client.on('error', (err) => {
+            console.error('Connection error:', err);
+            connectionStatus.textContent = 'Connection error: ' + err.message;
+            connectionStatus.className = 'status disconnected';
+        });
+        
+        client.on('close', () => {
+            console.log('Connection closed');
+            connectionStatus.textContent = 'Disconnected from MQTT broker';
+            connectionStatus.className = 'status disconnected';
+        });
+        
+        client.on('offline', () => {
+            console.log('Client offline');
+            connectionStatus.textContent = 'Offline';
+            connectionStatus.className = 'status disconnected';
+        });
+        
+        client.on('reconnect', () => {
+            console.log('Reconnecting...');
+            connectionStatus.textContent = 'Reconnecting to MQTT broker...';
+            connectionStatus.className = 'status disconnected';
+        });
+        
+        // Message Handler
+        client.on('message', (topic, message) => {
+            console.log('Received message:', message.toString());
+            
+            try {
+                const data = JSON.parse(message.toString());
+                
+                if (data.suhu !== undefined && data.kelembaban !== undefined) {
+                    // Update sensor data
+                    temperatureElement.textContent = data.suhu.toFixed(1) + ' °C';
+                    humidityElement.textContent = data.kelembaban.toFixed(1) + ' %';
+                }
+            } catch (e) {
+                console.error('Error parsing message:', e);
+            }
+        });
+        
+        // Relay Control Handlers
+        relayCheckboxes.forEach((checkbox, index) => {
+            checkbox.addEventListener('change', () => {
+                const relayNum = index + 1;
+                const state = checkbox.checked ? 'ON' : 'OFF';
+                
+                const command = {
+                    relay: relayNum,
+                    state: state
+                };
+                
+                client.publish(mqttConfig.publishTopic, JSON.stringify(command), (err) => {
+                    if (err) {
+                        console.error('Publish error:', err);
+                        // Revert the checkbox if publish failed
+                        checkbox.checked = !checkbox.checked;
+                    } else {
+                        console.log(`Relay ${relayNum} command sent: ${state}`);
+                    }
+                });
+            });
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            client.end();
+        });
+    </script>
 </body>
-
 </html>
