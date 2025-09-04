@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teyvat Progress Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --gi-blue: #2a3f5c;
+            --gi-gold: #c9a063;
+            --gi-light-blue: #73c0d8;
+            --gi-dark-blue: #1a2b44;
+            --gi-darker-blue: #0f1725;
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--gi-darker-blue);
+            color: #e2e8f0;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(42, 63, 92, 0.4) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(28, 42, 64, 0.4) 0%, transparent 25%);
+            overflow-x: hidden;
+        }
+        
+        .gi-container {
+            background: linear-gradient(135deg, var(--gi-dark-blue) 0%, var(--gi-darker-blue) 100%);
+            border: 2px solid var(--gi-gold);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(201, 160, 99, 0.2);
+        }
+        
+        .gi-header {
+            background: linear-gradient(to right, var(--gi-blue), var(--gi-dark-blue));
+            border-bottom: 2px solid var(--gi-gold);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gi-header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--gi-light-blue), transparent);
+        }
+        
+        .gi-btn {
+            background: linear-gradient(to bottom, var(--gi-gold), #a88246);
+            color: var(--gi-dark-blue);
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        
+        .gi-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(to bottom, #d4b57d, #b99252);
+        }
+        
+        .gi-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .gi-panel {
+            background: rgba(26, 43, 68, 0.7);
+            border: 1px solid var(--gi-gold);
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gi-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--gi-light-blue), transparent);
+        }
+        
+        .progress-bar {
+            height: 30px;
+            background-color: rgba(42, 63, 92, 0.7);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--gi-gold);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #73c0d8, #4a8ea8);
+            transition: width 0.5s ease-in-out;
+            box-shadow: 0 0 10px rgba(115, 192, 216, 0.6);
+        }
+        
+        .task-progress {
+            height: 12px;
+            background-color: rgba(42, 63, 92, 0.7);
+            border-radius: 4px;
+            border: 1px solid var(--gi-gold);
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .task-fill {
+            height: 100%;
+            background: linear-gradient(to right, #c9a063, #a88246);
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .character-container {
+            position: relative;
+            perspective: 1000px;
+        }
+        
+        .character {
+            width: 180px;
+            height: 280px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            filter: drop-shadow(0 0 10px rgba(201, 160, 99, 0.5));
+        }
+        
+        .character:hover {
+            transform: rotateY(10deg) translateY(-5px);
+        }
+        
+        .timer-display {
+            font-size: 3.5rem;
+            color: var(--gi-light-blue);
+            text-shadow: 0 0 10px rgba(115, 192, 216, 0.7);
+            background: rgba(26, 43, 68, 0.7);
+            border: 2px solid var(--gi-gold);
+            border-radius: 8px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
+            padding: 10px;
+        }
+        
+        .task-item {
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--gi-gold);
+            background: rgba(42, 63, 92, 0.5);
+            border-radius: 4px;
+        }
+        
+        .task-item:hover {
+            transform: translateX(5px);
+            background: rgba(42, 63, 92, 0.8);
+        }
+        
+        .elemental-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            opacity: 0.05;
+            background-image: 
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><path fill="%2373c0d8" d="M50,70 C30,70 10,50 10,30 C10,10 30,10 50,10 C70,10 90,30 90,50 C90,70 70,90 50,90 C30,90 10,70 10,50 C10,30 30,10 50,10 C70,10 90,30 90,50 C90,70 70,90 50,90 C30,90 10,70 10,50 C10,30 30,10 50,10 C70,10 90,30 90,50 C90,70 70,90 50,90 C30,90 10,70 10,50 C10,30 30,10 50,10 C70,10 90,30 90,50 C90,70 70,90 50,90 C30,90 10,70 10,50 C10,30 30,10 50,10 C70,10 90,30 90,50 C90,70 70,90 50,90 Z"/></svg>'),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><path fill="%23c9a063" d="M100,20 C60,20 20,60 20,100 C20,140 60,180 100,180 C140,180 180,140 180,100 C180,60 140,20 100,20 Z M100,160 C71,160 40,131 40,100 C40,69 71,40 100,40 C129,40 160,69 160,100 C160,131 129,160 100,160 Z"/></svg>');
+            background-size: 300px 300px, 200px 200px;
+            background-position: 0 0, 100% 100%;
+            background-repeat: no-repeat;
+            animation: elemental 60s linear infinite;
+        }
+        
+        @keyframes elemental {
+            0% { background-position: 0 0, 100% 100%; }
+            100% { background-position: 300px 300px, 0 0; }
+        }
+        
+        input, select {
+            background: rgba(26, 43, 68, 0.8);
+            border: 1px solid var(--gi-gold);
+            color: #e2e8f0;
+            border-radius: 4px;
+            font-family: 'Montserrat', sans-serif;
+            padding: 8px 12px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--gi-light-blue);
+            box-shadow: 0 0 5px rgba(115, 192, 216, 0.5);
+        }
+        
+        .flatpickr-input {
+            padding: 8px;
+            width: 100%;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(26, 43, 68, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--gi-gold);
+            border-radius: 4px;
+            border: 2px solid var(--gi-dark-blue);
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d4b57d;
+        }
+        
+        .crystal {
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(to bottom, transparent 0%, rgba(115, 192, 216, 0.3) 100%);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            box-shadow: 0 0 20px rgba(115, 192, 216, 0.7);
+            animation: crystal 3s ease-in-out infinite;
+        }
+        
+        .crystal::before {
+            content: "";
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            background: linear-gradient(to bottom, transparent 0%, rgba(201, 160, 99, 0.3) 100%);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+        
+        @keyframes crystal {
+            0%, 100% { transform: translateY(0) rotate(5deg); }
+            50% { transform: translateY(-5px) rotate(-5deg); }
+        }
+        
+        .crystal-left {
+            top: 20%;
+            left: 5%;
+        }
+        
+        .crystal-right {
+            top: 20%;
+            right: 5%;
+        }
+        
+        .mountain {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: 
+                linear-gradient(to bottom right, transparent 49%, var(--gi-blue) 50%),
+                linear-gradient(to bottom left, transparent 49%, var(--gi-blue) 50%);
+            background-size: 100px 100px;
+            background-repeat: repeat-x;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .gi-title {
+            background: linear-gradient(to right, #c9a063, #73c0d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(201, 160, 99, 0.5);
+        }
+        
+        .gi-icon {
+            color: var(--gi-light-blue);
+            text-shadow: 0 0 5px rgba(115, 192, 216, 0.7);
+        }
+        
+        .stat-box {
+            background: rgba(26, 43, 68, 0.7);
+            border: 1px solid var(--gi-gold);
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.relative{position:relative}.col-span-1{grid-column:span 1 / span 1}.col-span-2{grid-column:span 2 / span 2}.col-span-3{grid-column:span 3 / span 3}.mx-auto{margin-left:auto;margin-right:auto}.mb-10{margin-bottom:2.5rem}.mb-2{margin-bottom:0.5rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mr-2{margin-right:0.5rem}.mt-12{margin-top:3rem}.mt-2{margin-top:0.5rem}.mt-3{margin-top:0.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.flex{display:flex}.grid{display:grid}.h-full{height:100%}.max-h-40{max-height:10rem}.max-h-96{max-height:24rem}.max-w-6xl{max-width:72rem}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.space-x-4 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(1rem * var(--tw-space-x-reverse));margin-left:calc(1rem * calc(1 - var(--tw-space-x-reverse)))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-8 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(2rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(2rem * var(--tw-space-y-reverse))}.overflow-y-auto{overflow-y:auto}.rounded-md{border-radius:0.375rem}.rounded-t-lg{border-top-left-radius:0.5rem;border-top-right-radius:0.5rem}.object-fill{object-fit:fill}.p-2{padding:0.5rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.text-left{text-align:left}.text-center{text-align:center}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.font-bold{font-weight:700}@media (min-width: 768px){.md\:col-span-2{grid-column:span 2 / span 2}.md\:grid-cols-5{grid-template-columns:repeat(5, minmax(0, 1fr))}.md\:p-8{padding:2rem}.md\:text-5xl{font-size:3rem;line-height:1}.md\:text-xl{font-size:1.25rem;line-height:1.75rem}}@media (min-width: 1024px){.lg\:col-span-2{grid-column:span 2 / span 2}.lg\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}}</style></head>
+<body class="p-4 md:p-8">
+    <div class="elemental-bg"></div>
+    <div class="crystal crystal-left"></div>
+    <div class="crystal crystal-right"></div>
+    <div class="mountain"></div>
+    
+    <div class="max-w-6xl mx-auto gi-container p-6 relative">
+        <header class="gi-header text-center mb-10 p-6 rounded-t-lg">
+            <h1 class="text-4xl md:text-5xl font-bold gi-title">Teyvat Progress Tracker</h1>
+            <p class="mt-2 text-lg md:text-xl text-gi-light-blue">Monitor your journey across Teyvat</p>
+        </header>
+        
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column -->
+            <div class="space-y-8 lg:col-span-2">
+                <!-- Main Progress Bar -->
+                <section class="gi-panel p-6 relative">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center text-gi-light-blue">
+                        <i class="fas fa-hourglass-half gi-icon mr-2"></i>Lifetime Progress
+                    </h2>
+                    <div class="mb-2 flex justify-between text-sm">
+                        <span>Nov 5, 2004</span>
+                        <span id="progress-percentage" class="font-bold text-gi-light-blue">34.72%</span>
+                        <span>Nov 5, 2064</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="main-progress" class="progress-fill" style="width: 34.7186%;"></div>
+                    </div>
+                    <p id="progress-details" class="mt-3 text-sm text-gi-light-blue">20.83 years completed of 60 years total</p>
+                </section>
+                
+                <!-- Todo List -->
+                <section class="gi-panel p-6">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center text-gi-light-blue">
+                        <i class="fas fa-tasks gi-icon mr-2"></i>Commission Log
+                    </h2>
+                    
+                    <form id="todo-form" class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-2">
+                        <input type="text" id="todo-input" placeholder="Commission description" class="p-2 col-span-3 md:col-span-2" required="">
+                        <input type="text" id="todo-deadline" placeholder="Select date &amp; time" class="flatpickr-input p-2 col-span-2" readonly="readonly">
+                        <button type="submit" class="gi-btn p-2 col-span-1">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </form>
+                    
+                    <div id="todo-list" class="space-y-4 max-h-96 overflow-y-auto p-2">
+                        <div class="text-center p-4 stat-box">
+                            <i class="fas fa-inbox text-3xl mb-2 text-gi-light-blue"></i>
+                            <p class="text-gi-gold">No commissions yet. Add a new one to start!</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="space-y-8">
+                <!-- Character and Timer -->
+                <div class="gi-panel p-6 text-center">
+                    <div class="character-container mx-auto mb-6">
+                        <div class="character mx-auto h-full">
+                            <img class="object-fill rounded-md" src="https://1o872djuge.ufs.sh/f/hL4tjTnv9CWbNfLB1eYBCTWtiJz2mf6AxNUMv8qYD3LFQRbV" alt="Genshin Impact Style Character">
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mb-4 text-gi-light-blue">
+                        <i class="fas fa-clock gi-icon mr-2"></i>Expedition Timer
+                    </h2>
+                    
+                    <div class="timer-display font-mono mb-6" id="timer">00:00:00</div>
+                    
+                    <div class="flex justify-center space-x-4">
+                        <button id="timer-start" class="gi-btn px-6 py-2">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button id="timer-pause" class="gi-btn px-6 py-2">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button id="timer-reset" class="gi-btn px-6 py-2">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                    
+                    <div class="mt-6 text-center">
+                        <button id="lap" class="gi-btn px-4 py-1 text-sm">
+                            <i class="fas fa-flag"></i> Lap
+                        </button>
+                        <div id="laps" class="mt-4 text-left text-sm max-h-40 overflow-y-auto p-2 stat-box"></div>
+                    </div>
+                </div>
+                
+                <!-- Stats Panel -->
+                <section class="gi-panel p-6">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center text-gi-light-blue">
+                        <i class="fas fa-chart-pie gi-icon mr-2"></i>Commission Stats
+                    </h2>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 text-center stat-box">
+                            <div class="text-3xl font-bold text-gi-light-blue" id="total-tasks">0</div>
+                            <div class="text-sm text-gi-gold">Total Commissions</div>
+                        </div>
+                        <div class="p-4 text-center stat-box">
+                            <div class="text-3xl font-bold text-gi-light-blue" id="completed-tasks">0</div>
+                            <div class="text-sm text-gi-gold">Completed</div>
+                        </div>
+                        <div class="p-4 text-center stat-box">
+                            <div class="text-3xl font-bold text-gi-light-blue" id="pending-tasks">0</div>
+                            <div class="text-sm text-gi-gold">Pending</div>
+                        </div>
+                        <div class="p-4 text-center stat-box">
+                            <div class="text-3xl font-bold text-gi-light-blue" id="urgent-tasks">0</div>
+                            <div class="text-sm text-gi-gold">Urgent</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+        
+        <footer class="mt-12 text-center text-sm text-gi-light-blue">
+            <p>Teyvat Progress Tracker © 2023 | Track your journey across Teyvat</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize flatpickr
+            flatpickr("#todo-deadline", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                time_24hr: true
+            });
+            
+            // Main Progress Bar Calculation
+            const startDate = new Date('2004-11-05');
+            const endDate = new Date('2064-11-05');
+            const totalDuration = endDate - startDate;
+            
+            function updateMainProgress() {
+                const now = new Date();
+                const elapsed = now - startDate;
+                let percentage = (elapsed / totalDuration) * 100;
+                
+                // Clamp percentage between 0 and 100
+                percentage = Math.max(0, Math.min(100, percentage));
+                
+                document.getElementById('main-progress').style.width = percentage + '%';
+                document.getElementById('progress-percentage').textContent = percentage.toFixed(2) + '%';
+                
+                const years = (elapsed / (1000 * 60 * 60 * 24 * 365.25)).toFixed(2);
+                document.getElementById('progress-details').textContent = 
+                    `${years} years completed of 60 years total`;
+            }
+            
+            // Initial update and set interval to update every second
+            updateMainProgress();
+            setInterval(updateMainProgress, 1000);
+            
+            // Todo List Functionality
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+            
+            function saveTodos() {
+                localStorage.setItem('todos', JSON.stringify(todos));
+                updateTaskStats();
+            }
+            
+            function renderTodos() {
+                const todoList = document.getElementById('todo-list');
+                todoList.innerHTML = '';
+                
+                if (todos.length === 0) {
+                    todoList.innerHTML = `
+                        <div class="text-center p-4 stat-box">
+                            <i class="fas fa-inbox text-3xl mb-2 text-gi-light-blue"></i>
+                            <p class="text-gi-gold">No commissions yet. Add a new one to start!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                todos.forEach((todo, index) => {
+                    const todoItem = document.createElement('div');
+                    todoItem.className = 'task-item p-4';
+                    
+                    const now = new Date();
+                    const deadline = new Date(todo.deadline);
+                    const timeRemaining = deadline - now;
+                    
+                    let progressPercentage = 100;
+                    if (timeRemaining > 0) {
+                        const totalTime = deadline - new Date(todo.createdAt);
+                        progressPercentage = 100 - (timeRemaining / totalTime * 100);
+                    }
+                    
+                    todoItem.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-bold ${todo.completed ? 'line-through text-gi-light-blue' : 'text-gi-gold'}">${todo.text}</h3>
+                                <p class="text-xs mt-1 text-gi-light-blue">Deadline: ${formatDate(deadline)}</p>
+                                <p class="text-xs ${timeRemaining < 86400000 ? 'text-gi-light-blue pulse' : 'text-gi-gold'}">
+                                    ${timeRemaining > 0 ? `Time left: ${formatTimeRemaining(timeRemaining)}` : 'Deadline passed'}
+                                </p>
+                            </div>
+                            <button class="ml-2 text-gi-light-blue hover:text-white delete-btn" data-id="${index}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2 task-progress">
+                            <div class="task-fill" style="width: ${progressPercentage}%"></div>
+                        </div>
+                        <div class="mt-2 flex justify-end">
+                            <button class="text-xs mr-2 ${todo.completed ? 'text-gi-gold' : 'text-gi-light-blue'} complete-btn" data-id="${index}">
+                                ${todo.completed ? '<i class="fas fa-undo"></i> Mark Incomplete' : '<i class="fas fa-check"></i> Complete'}
+                            </button>
+                        </div>
+                    `;
+                    
+                    todoList.appendChild(todoItem);
+                });
+                
+                // Add event listeners to delete and complete buttons
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = parseInt(this.getAttribute('data-id'));
+                        deleteTodo(id);
+                    });
+                });
+                
+                document.querySelectorAll('.complete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = parseInt(this.getAttribute('data-id'));
+                        toggleComplete(id);
+                    });
+                });
+            }
+            
+            function formatDate(date) {
+                return date.toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            function formatTimeRemaining(ms) {
+                const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (days > 0) {
+                    return `${days}d ${hours}h ${minutes}m`;
+                } else {
+                    return `${hours}h ${minutes}m`;
+                }
+            }
+            
+            function addTodo(text, deadline) {
+                const todo = {
+                    text,
+                    deadline,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                
+                todos.push(todo);
+                saveTodos();
+                renderTodos();
+            }
+            
+            function deleteTodo(id) {
+                todos.splice(id, 1);
+                saveTodos();
+                renderTodos();
+            }
+            
+            function toggleComplete(id) {
+                todos[id].completed = !todos[id].completed;
+                saveTodos();
+                renderTodos();
+            }
+            
+            function updateTaskStats() {
+                const total = todos.length;
+                const completed = todos.filter(todo => todo.completed).length;
+                const pending = total - completed;
+                
+                // Count urgent tasks (less than 24 hours remaining)
+                const now = new Date();
+                const urgent = todos.filter(todo => {
+                    if (todo.completed) return false;
+                    const deadline = new Date(todo.deadline);
+                    return (deadline - now) < 86400000 && (deadline - now) > 0;
+                }).length;
+                
+                document.getElementById('total-tasks').textContent = total;
+                document.getElementById('completed-tasks').textContent = completed;
+                document.getElementById('pending-tasks').textContent = pending;
+                document.getElementById('urgent-tasks').textContent = urgent;
+            }
+            
+            document.getElementById('todo-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const textInput = document.getElementById('todo-input');
+                const deadlineInput = document.getElementById('todo-deadline');
+                
+                const text = textInput.value.trim();
+                const deadline = deadlineInput.value;
+                
+                if (!deadline) {
+                    alert('Please select a deadline for your commission');
+                    return;
+                }
+                
+                if (text) {
+                    addTodo(text, deadline);
+                    textInput.value = '';
+                    deadlineInput.value = '';
+                }
+            });
+            
+            // Timer/Stopwatch Functionality
+            let timerInterval = null;
+            let timerTime = 0;
+            let timerRunning = false;
+            let lapCount = 1;
+            
+            function updateTimerDisplay() {
+                const hours = Math.floor(timerTime / 3600000);
+                const minutes = Math.floor((timerTime % 3600000) / 60000);
+                const seconds = Math.floor((timerTime % 60000) / 1000);
+                
+                document.getElementById('timer').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            function startTimer() {
+                if (!timerRunning) {
+                    timerRunning = true;
+                    const startTime = Date.now() - timerTime;
+                    
+                    timerInterval = setInterval(() => {
+                        timerTime = Date.now() - startTime;
+                        updateTimerDisplay();
+                    }, 10);
+                }
+            }
+            
+            function pauseTimer() {
+                if (timerRunning) {
+                    clearInterval(timerInterval);
+                    timerRunning = false;
+                }
+            }
+            
+            function resetTimer() {
+                pauseTimer();
+                timerTime = 0;
+                lapCount = 1;
+                updateTimerDisplay();
+                document.getElementById('laps').innerHTML = '';
+            }
+            
+            function recordLap() {
+                if (timerRunning) {
+                    const lapTime = document.getElementById('timer').textContent;
+                    const lapItem = document.createElement('div');
+                    lapItem.className = 'p-2 border-b border-gi-gold';
+                    lapItem.textContent = `Lap ${lapCount++}: ${lapTime}`;
+                    document.getElementById('laps').prepend(lapItem);
+                }
+            }
+            
+            document.getElementById('timer-start').addEventListener('click', startTimer);
+            document.getElementById('timer-pause').addEventListener('click', pauseTimer);
+            document.getElementById('timer-reset').addEventListener('click', resetTimer);
+            document.getElementById('lap').addEventListener('click', recordLap);
+            
+            // Initialize the app
+            renderTodos();
+            updateTaskStats();
+            updateTimerDisplay();
+            
+            // Set up a periodic update for task progress bars
+            setInterval(renderTodos, 60000); // Update every minute
+        });
+    </script>
+
+<div class="flatpickr-calendar hasTime animate" tabindex="-1"><div class="flatpickr-months"><span class="flatpickr-prev-month flatpickr-disabled"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 17 17"><g></g><path d="M5.207 8.471l7.146 7.147-0.707 0.707-7.853-7.854 7.854-7.853 0.707 0.707-7.147 7.146z"></path></svg></span><div class="flatpickr-month"><div class="flatpickr-current-month"><select class="flatpickr-monthDropdown-months" aria-label="Month" tabindex="-1"><option class="flatpickr-monthDropdown-month" value="8" tabindex="-1">September</option><option class="flatpickr-monthDropdown-month" value="9" tabindex="-1">October</option><option class="flatpickr-monthDropdown-month" value="10" tabindex="-1">November</option><option class="flatpickr-monthDropdown-month" value="11" tabindex="-1">December</option></select><div class="numInputWrapper"><input class="numInput cur-year" type="number" tabindex="-1" aria-label="Year" min="2025"><span class="arrowUp"></span><span class="arrowDown"></span></div></div></div><span class="flatpickr-next-month"><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 17 17"><g></g><path d="M13.207 8.472l-7.854 7.854-0.707-0.707 7.146-7.146-7.146-7.148 0.707-0.707 7.854 7.854z"></path></svg></span></div><div class="flatpickr-innerContainer"><div class="flatpickr-rContainer"><div class="flatpickr-weekdays"><div class="flatpickr-weekdaycontainer">
+      <span class="flatpickr-weekday">
+        Sun</span><span class="flatpickr-weekday">Mon</span><span class="flatpickr-weekday">Tue</span><span class="flatpickr-weekday">Wed</span><span class="flatpickr-weekday">Thu</span><span class="flatpickr-weekday">Fri</span><span class="flatpickr-weekday">Sat
+      </span>
+      </div></div><div class="flatpickr-days" tabindex="-1"><div class="dayContainer"><span class="flatpickr-day prevMonthDay flatpickr-disabled" aria-label="August 31, 2025">31</span><span class="flatpickr-day flatpickr-disabled" aria-label="September 1, 2025">1</span><span class="flatpickr-day flatpickr-disabled" aria-label="September 2, 2025">2</span><span class="flatpickr-day flatpickr-disabled" aria-label="September 3, 2025">3</span><span class="flatpickr-day today" aria-label="September 4, 2025" aria-current="date" tabindex="-1">4</span><span class="flatpickr-day" aria-label="September 5, 2025" tabindex="-1">5</span><span class="flatpickr-day" aria-label="September 6, 2025" tabindex="-1">6</span><span class="flatpickr-day" aria-label="September 7, 2025" tabindex="-1">7</span><span class="flatpickr-day" aria-label="September 8, 2025" tabindex="-1">8</span><span class="flatpickr-day" aria-label="September 9, 2025" tabindex="-1">9</span><span class="flatpickr-day" aria-label="September 10, 2025" tabindex="-1">10</span><span class="flatpickr-day" aria-label="September 11, 2025" tabindex="-1">11</span><span class="flatpickr-day" aria-label="September 12, 2025" tabindex="-1">12</span><span class="flatpickr-day" aria-label="September 13, 2025" tabindex="-1">13</span><span class="flatpickr-day" aria-label="September 14, 2025" tabindex="-1">14</span><span class="flatpickr-day" aria-label="September 15, 2025" tabindex="-1">15</span><span class="flatpickr-day" aria-label="September 16, 2025" tabindex="-1">16</span><span class="flatpickr-day" aria-label="September 17, 2025" tabindex="-1">17</span><span class="flatpickr-day" aria-label="September 18, 2025" tabindex="-1">18</span><span class="flatpickr-day" aria-label="September 19, 2025" tabindex="-1">19</span><span class="flatpickr-day" aria-label="September 20, 2025" tabindex="-1">20</span><span class="flatpickr-day" aria-label="September 21, 2025" tabindex="-1">21</span><span class="flatpickr-day" aria-label="September 22, 2025" tabindex="-1">22</span><span class="flatpickr-day" aria-label="September 23, 2025" tabindex="-1">23</span><span class="flatpickr-day" aria-label="September 24, 2025" tabindex="-1">24</span><span class="flatpickr-day" aria-label="September 25, 2025" tabindex="-1">25</span><span class="flatpickr-day" aria-label="September 26, 2025" tabindex="-1">26</span><span class="flatpickr-day" aria-label="September 27, 2025" tabindex="-1">27</span><span class="flatpickr-day" aria-label="September 28, 2025" tabindex="-1">28</span><span class="flatpickr-day" aria-label="September 29, 2025" tabindex="-1">29</span><span class="flatpickr-day" aria-label="September 30, 2025" tabindex="-1">30</span><span class="flatpickr-day nextMonthDay" aria-label="October 1, 2025" tabindex="-1">1</span><span class="flatpickr-day nextMonthDay" aria-label="October 2, 2025" tabindex="-1">2</span><span class="flatpickr-day nextMonthDay" aria-label="October 3, 2025" tabindex="-1">3</span><span class="flatpickr-day nextMonthDay" aria-label="October 4, 2025" tabindex="-1">4</span><span class="flatpickr-day nextMonthDay" aria-label="October 5, 2025" tabindex="-1">5</span><span class="flatpickr-day nextMonthDay" aria-label="October 6, 2025" tabindex="-1">6</span><span class="flatpickr-day nextMonthDay" aria-label="October 7, 2025" tabindex="-1">7</span><span class="flatpickr-day nextMonthDay" aria-label="October 8, 2025" tabindex="-1">8</span><span class="flatpickr-day nextMonthDay" aria-label="October 9, 2025" tabindex="-1">9</span><span class="flatpickr-day nextMonthDay" aria-label="October 10, 2025" tabindex="-1">10</span><span class="flatpickr-day nextMonthDay" aria-label="October 11, 2025" tabindex="-1">11</span></div></div></div></div><div class="flatpickr-time time24hr" tabindex="-1"><div class="numInputWrapper"><input class="numInput flatpickr-hour" type="number" aria-label="Hour" tabindex="-1" step="1" min="0" max="23" maxlength="2"><span class="arrowUp"></span><span class="arrowDown"></span></div><span class="flatpickr-time-separator">:</span><div class="numInputWrapper"><input class="numInput flatpickr-minute" type="number" aria-label="Minute" tabindex="-1" step="5" min="0" max="59" maxlength="2"><span class="arrowUp"></span><span class="arrowDown"></span></div></div></div></body></html>
