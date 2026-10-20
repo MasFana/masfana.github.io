@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deasherian CPP Terminal</title>
+  <link rel="stylesheet" href="https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    aside {
+      width: 220px;
+      background-color: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .sidebar-header {
+      height: 40px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #30363d;
+      font-weight: 600;
+      font-size: 12px;
+      color: #8b949e;
+    }
+
+    .program-list {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+    }
+
+    .prog-btn {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: #8b949e;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .prog-btn:hover {
+      background-color: #21262d;
+      color: #c9d1d9;
+    }
+
+    .prog-btn.active {
+      background-color: #0d1117;
+      border-color: #30363d;
+      color: #c9d1d9;
+      font-weight: 600;
+    }
+
+    .prog-btn.active::before {
+      content: "> ";
+      color: #58a6ff;
+    }
+
+    .empty {
+      padding: 8px 10px;
+      color: #6e7681;
+      font-size: 12px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #0d1117;
+      min-width: 0;
+    }
+
+    header {
+      height: 40px;
+      padding: 0 12px;
+      background-color: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    #current-program {
+      font-size: 12px;
+      color: #c9d1d9;
+    }
+
+    #current-program::before {
+      content: "$ ";
+      color: #58a6ff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .action-btn {
+      padding: 4px 10px;
+      background-color: transparent;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      color: #8b949e;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background-color: #21262d;
+      border-color: #8b949e;
+      color: #c9d1d9;
+    }
+
+    #terminal {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      padding: 8px;
+      background-color: #0d1117;
+      overflow: hidden;
+    }
+
+    .xterm-viewport {
+      overflow-y: auto !important;
+    }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <div class="sidebar-header">Asher's Programs</div>
+    <nav class="program-list" id="program-list"></nav>
+  </aside>
+
+  <main>
+    <header>
+      <span id="current-program">—</span>
+      <div class="actions">
+        <button class="action-btn" id="clear-btn">Clear</button>
+        <button class="action-btn" id="restart-btn">Restart</button>
+      </div>
+    </header>
+    <div id="terminal"></div>
+  </main>
+
+  <script type="module">
+    import { Terminal } from 'https://esm.sh/@xterm/xterm@5.5.0';
+    import { FitAddon } from 'https://esm.sh/@xterm/addon-fit@0.10.0';
+    import xtermPty from 'https://esm.sh/xterm-pty@0.9.4';
+
+    const { openpty } = xtermPty;
+
+    const PROGRAM_DIR = './wasm/';
+
+    const termContainer = document.getElementById('terminal');
+    const programList = document.getElementById('program-list');
+    const programLabel = document.getElementById('current-program');
+    const clearBtn = document.getElementById('clear-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let programs = [];
+    let currentProgram = null;
+    let activeMaster = null;
+    let runToken = 0;
+
+    const term = new Terminal({
+      cursorBlink: true,
+      convertEol: true,
+      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+      fontSize: 13,
+      lineHeight: 1.35,
+      theme: {
+        background: '#0d1117',
+        foreground: '#c9d1d9',
+        cursor: '#58a6ff',
+        selectionBackground: 'rgba(88, 166, 255, 0.3)'
+      }
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(termContainer);
+    fitAddon.fit();
+
+    window.addEventListener('resize', () => fitAddon.fit());
+    termContainer.addEventListener('click', () => term.focus());
+
+    function programNameFromEntry(entry) {
+      if (typeof entry !== 'string') return null;
+
+      let raw = entry.split('?')[0].split('#')[0];
+      try { raw = decodeURIComponent(raw); } catch (_) {}
+
+      const base = raw.replace(/\\/g, '/').split('/').pop();
+      if (!/\.mjs$/i.test(base)) return null;
+
+      const name = base.replace(/\.mjs$/i, '');
+      return name && !name.startsWith('.') ? name : null;
+    }
+
+    function addProgram(found, entry) {
+      const name = programNameFromEntry(entry);
+      if (name) found.add(name);
+    }
+
+    async function discoverPrograms() {
+      const found = new Set();
+
+      try {
+        const res = await fetch(PROGRAM_DIR, { cache: 'no-store' });
+        if (res.ok) {
+          const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+          doc.querySelectorAll('a[href]').forEach((a) => addProgram(found, a.getAttribute('href')));
+        }
+      } catch (_) {}
+
+      if (found.size === 0) {
+        try {
+          const res = await fetch(`${PROGRAM_DIR}manifest.json`, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            const entries = Array.isArray(data) ? data : (data.programs || data.files || []);
+            entries.forEach((entry) => {
+              if (typeof entry === 'string' && /\.mjs$/i.test(entry)) {
+                addProgram(found, entry);
+              } else if (typeof entry === 'string') {
+                let raw = entry.trim();
+                try { raw = decodeURIComponent(raw); } catch (_) {}
+                const name = raw.replace(/\\/g, '/').split('/').pop().replace(/\.(mjs|js|wasm)$/i, '');
+                if (name && !name.startsWith('.')) found.add(name);
+              }
+            });
+          }
+        } catch (_) {}
+      }
+
+      return [...found].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
+    function renderPrograms() {
+      programList.replaceChildren();
+
+      if (!programs.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No programs found';
+        programList.appendChild(empty);
+        return;
+      }
+
+      for (const name of programs) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'prog-btn';
+        btn.textContent = name;
+        btn.dataset.program = name;
+        btn.addEventListener('click', () => {
+          if (name === currentProgram) {
+            term.focus();
+          } else {
+            runProgram(name, { updateUrl: true, replaceUrl: false });
+          }
+        });
+        programList.appendChild(btn);
+      }
+    }
+
+    function requestedProgram() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('prog') || params.get('program') || params.get('p') || params.get('file') || '';
+      return (raw || window.location.hash.replace(/^#\/?/, '')).trim();
+    }
+
+    function resolveProgram(value) {
+      if (!programs.length) return null;
+      let clean = String(value || '').trim();
+      try { clean = decodeURIComponent(clean); } catch (_) {}
+      clean = clean.replace(/\\/g, '/').split('/').pop().replace(/\.(mjs|js|wasm)$/i, '').trim().toLowerCase();
+      if (!clean) return programs[0];
+      return programs.find((name) => name.toLowerCase() === clean) || programs[0];
+    }
+
+    function updateUrl(name, replace) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('prog', name);
+        const method = replace ? 'replaceState' : 'pushState';
+        window.history[method]({ program: name }, '', url);
+      } catch (_) {
+        window.location.hash = name;
+      }
+    }
+
+    async function importProgramModule(url) {
+      try {
+        return await import(url);
+      } catch (firstError) {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw firstError;
+
+        const source = await res.text();
+        const patched = source.replace(/\bimport\.meta\.url\b/g, JSON.stringify(url));
+        const blobUrl = URL.createObjectURL(new Blob([patched], { type: 'text/javascript' }));
+
+        try {
+          return await import(blobUrl);
+        } finally {
+          URL.revokeObjectURL(blobUrl);
+        }
+      }
+    }
+
+    async function runProgram(value, options = {}) {
+      const program = resolveProgram(value);
+      if (!program) {
+        term.writeln('\x1b[90mNo programs found.\x1b[0m');
+        return;
+      }
+
+      const token = ++runToken;
+      currentProgram = program;
+
+      if (options.updateUrl) {
+        updateUrl(program, Boolean(options.replaceUrl));
+      }
+
+      for (const btn of programList.querySelectorAll('.prog-btn')) {
+        btn.classList.toggle('active', btn.dataset.program === program);
+      }
+      programLabel.textContent = program;
+      document.title = "Deasherian CPP - "+program;
+
+      if (activeMaster) {
+        try { activeMaster.dispose(); } catch (_) {}
+        activeMaster = null;
+      }
+      term.reset();
+
+      const { master, slave } = openpty();
+      activeMaster = master;
+      term.loadAddon(master);
+      term.focus();
+
+      const moduleUrl = new URL(
+        `${PROGRAM_DIR}${encodeURIComponent(program)}.mjs?t=${Date.now()}`,
+        window.location.href
+      ).href;
+
+      try {
+        const module = await importProgramModule(moduleUrl);
+        if (token !== runToken) return;
+
+        if (typeof module.default !== 'function') {
+          throw new Error('Program module has no default export');
+        }
+
+        await module.default({
+          pty: slave,
+          onExit: (code) => {
+            if (token !== runToken) return;
+            term.writeln(`\r\n\x1b[90m[exited with code ${code}]\x1b[0m`);
+          }
+        });
+      } catch (err) {
+        if (token !== runToken) return;
+
+        if (err && err.name === 'ExitStatus') {
+          term.writeln(`\r\n\x1b[90m[exited with code ${err.status}]\x1b[0m`);
+          return;
+        }
+
+        console.error(err);
+        term.writeln(`\r\n\x1b[31m${program}: failed to start\x1b[0m`);
+      }
+    }
+
+    window.addEventListener('popstate', (event) => {
+      const target = resolveProgram((event.state && event.state.program) || requestedProgram());
+      if (target && target !== currentProgram) {
+        runProgram(target, { updateUrl: false });
+      }
+    });
+
+    window.addEventListener('hashchange', () => {
+      const target = resolveProgram(requestedProgram());
+      if (target && target !== currentProgram) {
+        runProgram(target, { updateUrl: false });
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      term.clear();
+      term.focus();
+    });
+
+    restartBtn.addEventListener('click', () => {
+      runProgram(currentProgram, { updateUrl: false });
+    });
+
+    programs = await discoverPrograms();
+    renderPrograms();
+
+    if (programs.length) {
+      runProgram(requestedProgram(), { updateUrl: true, replaceUrl: true });
+    } else {
+      document.title = 'Deasherian CPP Terminal';
+      term.writeln('\x1b[90mNo programs found.\x1b[0m');
+    }
+  </script>
+</body>
+</html>
